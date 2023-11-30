@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: lab3
+
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: values
+  namespace: lab3
+data:
+  react_app_username: "anis"
+  react_app_company_name: "reg"
+
+---
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: lab3
+  namespace: lab3
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      tier: lab3
+  template:
+    metadata:
+      labels:
+        tier: lab3
+    spec:
+      containers:
+      - name: lab3
+        image: ifilyaninitmo/itdt-contained-frontend:master
+        env:
+        - name: REACT_APP_USERNAME
+          valueFrom:
+            configMapKeyRef:
+              name: values
+              key: react_app_username
+        - name: REACT_APP_COMPANY_NAME
+          valueFrom:
+            configMapKeyRef:
+              name: values
+              key: react_app_company_name
+
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: secret-tls
+  namespace: lab3
+type: kubernetes.io/tls
+stringData:
+  tls.crt: |
+    -----BEGIN CERTIFICATE-----
+    
+    -----END CERTIFICATE----- 
+  tls.key: |
+    -----BEGIN PRIVATE KEY-----
+    
+    -----END PRIVATE KEY-----   
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: lab3
+  namespace: lab3
+  labels:
+    tier: lab3
+spec:
+  type: NodePort
+  ports:
+  - port: 3000
+    targetPort: 3000
+    protocol: TCP
+  selector:
+    tier: lab3
+
+---
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: lab3
+  namespace: lab3
+spec:
+  tls:
+  - hosts:
+      - lab3.info
+    secretName: secret-tls
+  rules:
+  - host: lab3.info
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: lab3
+            port:
+              number: 3000
